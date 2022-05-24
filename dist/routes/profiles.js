@@ -1,72 +1,69 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const node_persist_1 = __importDefault(require("node-persist"));
 const uuid_1 = require("uuid");
 // import { profileSchema } from "./validate";
 // const Joi = require("joi");
+const mongoose = require("mongoose");
+const Profile = require("../config/profileSchema");
 const express = require("express");
 const router = express.Router();
 (async () => {
     "use strict";
-    let options = { dir: "/Services/storage" };
-    await node_persist_1.default.init(options);
     // CRUD
     // Create [POST]
     router.post("/", async (req, res) => {
-        const profile = {
+        const profile = new Profile({
             id: (0, uuid_1.v4)(),
             ...req.body,
             created: new Date(),
             updated: new Date(),
-        };
-        // const { error, value } = await profileSchema.validate(profile, {
-        //   abortEarly: false,
-        // });
-        // if (error)
-        //   return res.status(400).json({
-        //     value: value,
-        //     errors: error.details.map((json: any) => json.message),
-        //   });
-        const save = await node_persist_1.default.setItem(profile.id, profile);
-        res.status(201).json(save.content.value);
+        });
+        console.log(profile);
+        //
+        await profile.save((err) => {
+            if (err)
+                return console.log(err);
+            res.status(201).json(profile);
+        });
     });
     // Read [GET] all profiles
     router.get("/", async (req, res) => {
-        let profiles = await node_persist_1.default.values();
-        if (!profiles.length)
-            return res.status(200).send("No profiles exist");
+        let profiles = await Profile.find({});
         res.json(profiles).status(200);
     });
     // Read [GET] profile by id
     router.get("/:id", async (req, res) => {
         let id = req.params.id;
-        let profile = await node_persist_1.default.getItem(id);
+        let profile = await Profile.findOne({ id: id });
         if (!profile)
-            res.status(404).send(`Profile does not exist (id: ${id})`);
+            return res.json({ id: id, status: 404 }).status(404);
         res.json(profile).status(200);
+        // let profile = await storage.getItem(id);
+        // if (!profile) res.status(404).send(`Profile does not exist (id: ${id})`);
+        // res.json(profile).status(200);
     });
     // Update [PUT] profile by id
     router.put("/", async (req, res) => {
         const id = req.body.id;
-        let original = await node_persist_1.default.getItem(id);
-        if (!original)
-            res.status(404).send(`Profile not found (id: ${id})`);
-        let updated = { ...original, ...req.body, updated: new Date() };
-        await node_persist_1.default.updateItem(id, updated);
-        res.json(updated).status(200);
+        let response = await Profile.findOneAndUpdate({ id: id }, { ...req.body, updated: new Date() });
+        // if (!original) res.status(404).send(`Profile not found (id: ${id})`);
+        // let updated = { ...original, ...req.body, updated: new Date() };
+        // await storage.updateItem(id, updated);
+        if (!response)
+            return res.status(404).send(`Profile not found (id: ${id})`);
+        res.json(response).status(200);
     });
     // Delete [DELETE] profile by id
     router.delete("/:id", async (req, res) => {
         let id = req.params.id;
-        let profile = await node_persist_1.default.removeItem(id);
-        if (profile.existed)
-            res.statusCode = 200;
-        else
-            res.statusCode = 404;
-        res.json({ id, existed: profile.existed, deleted: profile.removed });
+        let response = await Profile.findOneAndDelete({ id: id });
+        // let profile = await storage.removeItem(id);
+        // if (profile.existed) res.statusCode = 200;
+        // else res.statusCode = 404;
+        // res.json({ id, existed: profile.existed, deleted: profile.removed });
+        if (!response)
+            return res.status(404).send(`Profile not found (id: ${id})`);
+        res.json(response);
     });
 })();
 module.exports = router;
