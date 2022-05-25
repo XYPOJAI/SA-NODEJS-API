@@ -15,8 +15,8 @@ const router = express.Router();
   // Create [POST]
   router.post("/", async (req: Request, res: Response) => {
     const profile = new Profile({
-      id: uuidv4(),
       ...req.body,
+      id: req.body.id == "" ?? uuidv4(),
       created: new Date(),
       updated: new Date(),
     });
